@@ -1,0 +1,46 @@
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_qdrant import QdrantVectorStore
+
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import VectorParams, Distance
+
+from sentence_transformers import CrossEncoder
+
+from dotenv import load_dotenv
+
+import os
+
+load_dotenv()
+
+url = os.getenv("QDRANT_URL")
+qdrant_api = os.getenv("QDRANT_API")
+
+def embedding_model():
+    embedding = OpenAIEmbeddings(
+        model='text-embedding-3-small',
+    )
+    return embedding
+
+def model_llm(temperature=0.7):
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=temperature)
+    return llm
+
+def rerank_model(device):
+    rerank = CrossEncoder("Qwen/Qwen3-Reranker-0.6B", device=device)
+    return rerank
+
+def qdrant_client():
+    client = QdrantClient(
+        url=url,
+        api_key=os.getenv("QDRANT_API")
+    )
+    return client
+
+def retrive(embedding):
+    retrive = QdrantVectorStore.from_existing_collection(
+        embedding=embedding,
+        collection_name="percobaan_capston3",
+        url=url,
+        api_key=os.getenv("QDRANT_API"),
+    )
+    return retrive

@@ -3,6 +3,10 @@ from sqlalchemy import Table, Column, Integer, String, Float, text
 from sqlalchemy import create_engine
 import pandas as pd
 from uuid import uuid4
+from langchain_core.documents import Document
+from langchain_qdrant import QdrantVectorStore
+from chatbot.config import embedding_model, url, qdrant_api
+import os
 
 data_path = "/home/hasyim/Bootcamp_AI/capston/Capston3/chatbot/data/raw/imdb_top_1000.csv"
 df = pd.read_csv(data_path)
@@ -11,11 +15,11 @@ df=df.replace({'Released_Year': 'PG'}, None)
 
 df['Gross'] = df['Gross'].str.replace(',', '', regex=True)
 
+df[['Released_Year','Gross']] = df[['Released_Year','Gross']].apply(pd.to_numeric)
+
+df['film_id'] = [str(uuid4()) for _ in range(len(df['Series_Title']))]
+
 df_clean = df.drop(columns="Overview")
-
-df_clean[['Released_Year','Gross']] = df_clean[['Released_Year','Gross']].apply(pd.to_numeric)
-
-df_clean['film_id'] = [str(uuid4()) for _ in range(len(df_clean['Series_Title']))]
 
 engine = create_engine('sqlite:////home/hasyim/Bootcamp_AI/capston/Capston3/chatbot/data/process/IMDB_FILM_capston3.db')
 
@@ -52,3 +56,33 @@ df_clean.to_sql(
     if_exists='append',
     index=False
 )
+
+print("Create sql sucesses ✅")
+
+documents = []
+
+for i in range(len(df)):
+    judul_film = df['Series_Title'][i]
+    overview_film = df['Overview'][i]
+    id_film = df['film_id'][i]
+    input_rag = f"Series_Title: {judul_film}, Overview: {overview_film}"
+    doc = Document(
+        page_content=input_rag,
+        metadata={
+            "film_id": id_film,
+            "Series_Title": judul_film
+        },
+    )
+    documents.append(doc)
+
+uuids = [str(uuid4()) for _ in range(len(documents))]
+
+qdrant = QdrantVectorStore.from_documents(
+    documents,
+    embedding=embedding_model(),
+    url=url,
+    api_key=qdrant_api,
+    collection_name="data_capston3",
+)
+    
+print("Create qdrant data sucesses ✅")
