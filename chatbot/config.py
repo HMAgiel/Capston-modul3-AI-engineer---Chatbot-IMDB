@@ -36,7 +36,7 @@ def qdrant_client():
     )
     return client
 
-def retrive(embedding):
+def retrive_rag(embedding):
     retrive = QdrantVectorStore.from_existing_collection(
         embedding=embedding,
         collection_name="percobaan_capston3",
