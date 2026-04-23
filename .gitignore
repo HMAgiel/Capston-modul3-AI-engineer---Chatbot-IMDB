@@ -12,3 +12,6 @@ wheels/
 
 #credential
 .env
+
+#model
+model/

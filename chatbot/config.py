@@ -2,7 +2,6 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
 
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import VectorParams, Distance
 
 from sentence_transformers import CrossEncoder
 
