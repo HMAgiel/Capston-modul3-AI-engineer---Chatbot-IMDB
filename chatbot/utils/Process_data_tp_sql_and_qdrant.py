@@ -82,7 +82,7 @@ qdrant = QdrantVectorStore.from_documents(
     embedding=embedding_model(),
     url=url,
     api_key=qdrant_api,
-    collection_name="data_capston3",
+    collection_name="Data_IMDB",
 )
     
 print("Create qdrant data sucesses ✅")
