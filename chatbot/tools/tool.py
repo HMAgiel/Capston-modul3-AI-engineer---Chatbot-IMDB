@@ -24,7 +24,6 @@ if __name__ == "__main__":
     from langchain_openai import ChatOpenAI
     from dotenv import load_dotenv
     from langchain.agents import create_agent
-    from IPython.display import Markdown, display
     load_dotenv()
 
     llm = ChatOpenAI(model="gpt-4o-mini")
@@ -47,7 +46,7 @@ if __name__ == "__main__":
         {"messages": [{"role": "user", "content": "Saya penasaran saya kan belajar sejarah disekolah, nah apakah ada perang mengenai perang dunia ke 2?"}]}
     )
     answer = response["messages"][-1].content
-    display(Markdown(answer))
+    print(answer)
     # print("✅ Agent berhasil dibuat!")
     # print(f"   Model  : {llm.model_name}")
     # print(f"   Tools  : {[t.name for t in tools]}")

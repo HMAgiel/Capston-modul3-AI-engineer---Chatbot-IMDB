@@ -21,5 +21,10 @@ dependencies = [
     "tqdm>=4.67.3",
     "uuid>=1.30",
 ]
-[tool.poetry]
-packages = [{include = "chatbot"}]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["chatbot*"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
