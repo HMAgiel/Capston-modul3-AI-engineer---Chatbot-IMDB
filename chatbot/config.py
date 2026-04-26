@@ -38,7 +38,8 @@ def rerank_model():
     rerank = CrossEncoder(
         "Qwen/Qwen3-Reranker-0.6B", 
         device=device_used, 
-        cache_folder="chatbot/model"
+        cache_folder="chatbot/model",
+        local_files_only=True
     )
     return rerank
 
