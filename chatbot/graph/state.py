@@ -9,9 +9,9 @@ class AgentState(TypedDict):
     rag_result: str
     sql_result: str
     
-    next_worker: List[Literal["RAG_agent", "SQL_agent"]]
+    next_worker: List[Literal["RAG_agent", "SQL_agent", "basic_agent"]]
     
     final_result: str
     
 class SupervisorOutput(TypedDict):
-    next_worker: List[Literal["RAG_agent", "SQL_agent"]]
+    next_worker: List[Literal["RAG_agent", "SQL_agent", "basic_agent"]]
