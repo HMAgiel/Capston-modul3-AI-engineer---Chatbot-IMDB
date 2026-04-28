@@ -6,9 +6,9 @@ from langgraph.graph.message import add_messages
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], add_messages]
     
-    rag_result: str
+    RAG_result: str
     sql_result: str
-    
+    history: list
     next_worker: List[Literal["RAG_agent", "SQL_agent", "basic_agent"]]
     
     final_result: str
