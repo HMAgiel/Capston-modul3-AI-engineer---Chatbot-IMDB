@@ -5,6 +5,10 @@ from chatbot.prompt.agent_prompt import RAG_prompt
 from chatbot.tools.tool import RAG_tool
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
+from langchain_community.utilities.sql_database import SQLDatabase
+from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
+from langchain_classic import hub
+from sqlalchemy import create_engine
 from langfuse import get_client, propagate_attributes
 from langfuse.langchain import CallbackHandler
 from dotenv import load_dotenv
@@ -47,7 +51,7 @@ def supervisor_agent(state: AgentState, config: RunnableConfig) -> AgentState:
 def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
     llm = model_llm()
     
-    session_id = config.get("cinfigurable", {}).get("session_id", "default")
+    session_id = config.get("configurable", {}).get("session_id", "default")
     with langfuse.start_as_current_observation(
         name="RAG_worker",
         as_type="span"
@@ -85,3 +89,27 @@ def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
             **state,
             "RAG_results": result
         }
+        
+def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
+    db_engine = create_engine("sqllite/////home/hasyim/projects-ai-engineer/Capston3/chatbot/data/process/IMDB_FILM_capston3.db")
+    db = SQLDatabase(db_engine)
+    llm = model_llm()
+    toolkit = SQLDatabaseToolkit(llm, db)
+    tool_sql = toolkit.get_tools()
+    session_id = config.get("configirable",{}).get("session_id", "default")
+    with langfuse.start_as_current_observation(
+        name="SQL_agent",
+        as_type="span"
+    ):
+        handler=CallbackHandler()
+        """
+        This node is to connect adn get data from sql database
+        """
+        
+        querstion = state["messages"][-1].content
+        history = state["messages"]
+        
+        prompt = hub.pull("langchain-ai/sql-agent-system-prompt")
+        
+        
+        
