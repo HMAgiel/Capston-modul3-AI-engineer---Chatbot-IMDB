@@ -1,5 +1,7 @@
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
+from sqlalchemy import create_engine
+from langchain_community.utilities.sql_database import SQLDatabase
 
 from qdrant_client import QdrantClient
 
@@ -22,12 +24,10 @@ def check_gpu():
         return "cuda"
     except (subprocess.CalledProcessError, FileNotFoundError):
         return "cpu"
-
-def embedding_model():
-    embedding = OpenAIEmbeddings(
-        model='text-embedding-3-small',
-    )
-    return embedding
+    
+embedding = OpenAIEmbeddings(
+    model='text-embedding-3-small',
+)
 
 def model_llm(temperature=0.7):
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=temperature)
@@ -43,18 +43,17 @@ def rerank_model():
     )
     return rerank
 
-def qdrant_client():
-    client = QdrantClient(
-        url=url,
-        api_key=os.getenv("QDRANT_API")
-    )
-    return client
+client = QdrantClient(
+    url=url,
+    api_key=os.getenv("QDRANT_API")
+)
 
-def retrive_rag(embedding):
-    retrive = QdrantVectorStore.from_existing_collection(
-        embedding=embedding,
-        url=url,
-        api_key=os.getenv("QDRANT_API"),
-        collection_name="Data_IMDB"
-    )
-    return retrive
+retrive = QdrantVectorStore.from_existing_collection(
+    embedding=embedding,
+    url=url,
+    api_key=os.getenv("QDRANT_API"),
+    collection_name="Data_IMDB"
+)
+
+db_engine = create_engine("sqllite/////home/hasyim/projects-ai-engineer/Capston3/chatbot/data/process/IMDB_FILM_capston3.db")
+db = SQLDatabase(db_engine)

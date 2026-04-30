@@ -1,14 +1,12 @@
 from state import AgentState, SupervisorOutput
-from chatbot.config import model_llm
+from chatbot.config import model_llm, db
 from chatbot.prompt.supervisor import SUPERVISOR_PROMPT
 from chatbot.prompt.agent_prompt import RAG_prompt
 from chatbot.tools.tool import RAG_tool
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
-from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from langchain_classic import hub
-from sqlalchemy import create_engine
 from langfuse import get_client, propagate_attributes
 from langfuse.langchain import CallbackHandler
 from dotenv import load_dotenv
@@ -50,7 +48,6 @@ def supervisor_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         
 def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
     llm = model_llm()
-    
     session_id = config.get("configurable", {}).get("session_id", "default")
     with langfuse.start_as_current_observation(
         name="RAG_worker",
@@ -65,11 +62,11 @@ def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         history = state["history"]
         
         prompt = RAG_prompt.format(
-            history=history
+            history=history,
             question=question
         )
         
-        response = llm.invoke(
+        result = llm.invoke(
             [
                 SystemMessage(prompt),
                 HumanMessage(f"Query: {question}"),
@@ -78,12 +75,6 @@ def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
                 "callbacks": [handler],
             },
         )
-        hasil_query = response.content.strip()
-        
-        if "N/A" in hasil_query:
-            result = "[Tidak ada input ke database]"
-        else:
-            result = RAG_tool.invoke(hasil_query)
             
         return {
             **state,
@@ -91,11 +82,10 @@ def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         }
         
 def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
-    db_engine = create_engine("sqllite/////home/hasyim/projects-ai-engineer/Capston3/chatbot/data/process/IMDB_FILM_capston3.db")
-    db = SQLDatabase(db_engine)
     llm = model_llm()
     toolkit = SQLDatabaseToolkit(llm, db)
     tool_sql = toolkit.get_tools()
+    llm_bind_tool = llm.bind_tools([tool_sql])
     session_id = config.get("configirable",{}).get("session_id", "default")
     with langfuse.start_as_current_observation(
         name="SQL_agent",
@@ -106,10 +96,26 @@ def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         This node is to connect adn get data from sql database
         """
         
-        querstion = state["messages"][-1].content
+        question = state["messages"][-1].content
         history = state["messages"]
+        prompt_sql = hub.pull("langchain-ai/sql-agent-system-prompt")
+        prompt = prompt_sql.format(dialect=db.dialect, top_k=5)
         
-        prompt = hub.pull("langchain-ai/sql-agent-system-prompt")
+        result = llm_bind_tool.invoke(
+            [
+                SystemMessage(prompt),
+                HumanMessage(f"Query: {question}"),
+            ],
+            config={
+                "callback": [handler]
+            },
+        )
+        return {
+            **state,
+            "SQL_results": result
+        }
+        
+        
         
         
         
