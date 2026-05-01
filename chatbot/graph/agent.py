@@ -2,7 +2,7 @@ from state import AgentState, SupervisorOutput
 from chatbot.config import model_llm, db
 from chatbot.prompt.supervisor import SUPERVISOR_PROMPT
 from chatbot.prompt.agent_prompt import RAG_prompt
-from chatbot.tools.tool import RAG_tool
+from chatbot.tools.tool import tool_rag, tool_omdb
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
@@ -48,6 +48,7 @@ def supervisor_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         
 def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
     llm = model_llm()
+    RAG_llm = llm.bind_tools([tool_rag])
     session_id = config.get("configurable", {}).get("session_id", "default")
     with langfuse.start_as_current_observation(
         name="RAG_worker",
@@ -66,7 +67,7 @@ def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
             question=question
         )
         
-        result = llm.invoke(
+        result = RAG_llm.invoke(
             [
                 SystemMessage(prompt),
                 HumanMessage(f"Query: {question}"),
