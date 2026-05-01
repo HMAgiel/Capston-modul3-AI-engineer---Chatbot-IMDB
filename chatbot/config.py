@@ -17,8 +17,8 @@ load_dotenv()
 
 url = os.getenv("QDRANT_URL")
 qdrant_api = os.getenv("QDRANT_API")
-url_omdb = os.getenv("OMDb_url")
-OMDB_API = os.getenv("OMDb_api_key")
+url_omdb = os.getenv("OMDB_url")
+OMDB_API = os.getenv("OMDB_api_key")
 
 def check_gpu():
     try:
