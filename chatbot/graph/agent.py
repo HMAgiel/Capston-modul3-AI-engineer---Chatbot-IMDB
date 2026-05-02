@@ -38,13 +38,24 @@ def supervisor_agent(state: AgentState, config: RunnableConfig) -> AgentState:
             },
         )
         
-        if not decision:
-            decision = ["basic_agent"]
-        print(f"Supervisor melakukan routing ke {decision}")
+        if decision and "next_worker" in decision:
+            main_route = decision["next_worker"]
+        else:
+            main_route = "basic_agent"
+            
+        if isinstance(main_route, list):
+            main_route = main_route[0]
+            
         return {
-            **state,
-            "next_worker": decision,
-        }
+            "next_worker": main_route
+        }        
+        # if not decision:
+        #     decision = ["basic_agent"]
+        # print(f"Supervisor melakukan routing ke {decision}")
+        # return {
+        #     **state,
+        #     "next_worker": decision,
+        # }
 
 
 def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
@@ -82,10 +93,24 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
             },
         )
             
+        if result and "data_worker" in result:
+            data_route = result["data_worker"]
+        else:
+            data_route = "Agregasi_agent"
+            
+        if isinstance(data_route, list):
+            data_route = data_route[0]
+        
         return {
-            **state,
-            "data_worker": result
+            "data_worker": str(data_route)
         }
+        
+        # return {
+        #     **state,
+        #     "data_worker": result
+        # }
+        
+        
 def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
     llm = model_llm()
     RAG_llm = llm.bind_tools([tool_rag])
