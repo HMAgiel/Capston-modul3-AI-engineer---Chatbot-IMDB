@@ -1,7 +1,7 @@
-from state import AgentState, SupervisorOutput
+from chatbot.graph.state import SupervisorOutput, DataAgentOutput, AgentState
 from chatbot.config import model_llm, db
 from chatbot.prompt.supervisor import SUPERVISOR_PROMPT
-from chatbot.prompt.agent_prompt import RAG_prompt
+from chatbot.prompt.agent_prompt import RAG_prompt, omdb_prompt, Data_prompt, agregasi_prompt, Basic_prompt
 from chatbot.tools.tool import tool_rag, tool_omdb
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
@@ -45,26 +45,68 @@ def supervisor_agent(state: AgentState, config: RunnableConfig) -> AgentState:
             **state,
             "next_worker": decision,
         }
+
+
+def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
+    llm = model_llm(temperature=0.1)
+    llm_data = llm.with_structured_output(DataAgentOutput)
+    session_id = config.get("configurable", {}).get("session_id", "default")
+    
+    with langfuse.start_as_current_observation(
+        name="Data_agent",
+        as_type="span",
+    ):
+        handler = CallbackHandler()
+        """
+        This agnet is used to sort what agent used for the data search
+        """
+        sql_results = state.get("SQL_results", [])
+        omdb_results = state.get("OMDB_result", [])
+        rag_results = state.get("RAG_results", "")
+        question = state["messages"][-1].content
         
+        prompt = Data_prompt.format(
+            question=question,
+            RAG_result=rag_results,
+            SQL_result=sql_results,
+            OMDB_result=omdb_results
+        )
+        
+        result = llm_data.invoke(
+            [
+                SystemMessage(prompt),
+                HumanMessage(f"Query: {question}")
+            ],
+            config={
+                "callbacks": [handler],
+            },
+        )
+            
+        return {
+            **state,
+            "data_worker": result
+        }
 def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
     llm = model_llm()
     RAG_llm = llm.bind_tools([tool_rag])
     session_id = config.get("configurable", {}).get("session_id", "default")
     with langfuse.start_as_current_observation(
-        name="RAG_worker",
+        name="RAG_agnet",
         as_type="span"
     ):
         handler = CallbackHandler()
         """
         This node used to retrive data from vectore databse based on user query
         """
-        
+        hasil_sql = state.get("SQL_results", [])
         question = state["messages"][-1].content
         history = state["history"]
         
         prompt = RAG_prompt.format(
             history=history,
-            question=question
+            question=question,
+            SQL_result=hasil_sql
+
         )
         
         result = RAG_llm.invoke(
@@ -116,7 +158,110 @@ def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
             "SQL_results": result
         }
         
+def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
+    llm = model_llm()
+    omdb_llm = llm.bind_tools([tool_omdb])
+    session_id = config.get("configirable",{}).get("session_id", "default")
+    with langfuse.start_as_current_observation(
+        name="OMDB_agent",
+        as_type="span"
+    ):
+        handler = CallbackHandler()
+        """
+        This node used to get data from OMDB server
+        """
+        hasil_sql = state.get("SQL_results", [])
+        prompt = omdb_prompt.format(
+            hasil_sql=hasil_sql
+        )
         
+        result = omdb_llm.invoke(
+            [
+                SystemMessage(prompt),
+                HumanMessage(f"Query: {hasil_sql}"),
+            ],
+            config={
+                "callbacks": [handler],
+            },
+        )
+            
+        return {
+            **state,
+            "OMDB_result": result
+        }
         
+def Agregasi_agent(state: AgentState, config: RunnableConfig) -> AgentState:
+    llm = model_llm()
+    session_id = config.get("configirable",{}).get("session_id", "default")
+    with langfuse.start_as_current_observation(
+        name="Agregasi_agent",
+        as_type="span"
+    ):
+        handler=CallbackHandler()
+        """
+        This node is for agregation of all the data agent output
+        """
+        results = []
+        if state.get("RAG_result"):
+            results.append(f"RAG Result: {state["RAG_result"]}")
+        if state.get("SQL_result"):
+            results.append(f"SQL Result: {state["SQL_result"]}")
+        if state.get("OMDB_result"):
+            results.append(f"OMDB result: {state["OMDB_result"]}")
+        combined = "\n\n".join(results) if results else "Tidak ada hasil dari worker"
         
+        history = state["history"]
+        original_query = state["messages"][-1].content
         
+        result = llm.invoke(
+            [
+                SystemMessage(agregasi_prompt),
+                HumanMessage(f"Query: {original_query}\n\n History: {history}\n\n data: {combined}")
+            ],
+            config={
+                "callbacks": [handler],
+            },
+        )
+        
+        final = result.content
+        return {
+            **state,
+            "messages": [AIMessage(content=final)],
+            "final_result": final,
+        }
+        
+def basic_agent(state: AgentState, config: RunnableConfig)-> AgentState:
+    llm=model_llm()
+    session_id = config.get("configurable", {}).get("session_id", "default")
+    with langfuse.start_as_current_observation(
+        name="Basic_agent",
+        as_type="span"
+    ):
+
+        handler = CallbackHandler()
+        """
+        Node ini menjawab pertanyaan umum yang tidak masuk kategori
+        produk atau promo.
+        """
+        question = state["messages"][0]
+        history  = state["history"]
+
+        prompt = Basic_prompt.format(
+            history=history,
+            question=question,
+        )
+        result = llm.invoke(
+            [
+                SystemMessage(prompt),
+                HumanMessage(f"Query: {question}"),
+            ],
+            config={
+                "callbacks": [handler],
+            },
+        )
+        basic_results = result.content
+        return {
+            **state,
+            "messages": [AIMessage(content=basic_results)],
+            "final_result": basic_results,
+        }
