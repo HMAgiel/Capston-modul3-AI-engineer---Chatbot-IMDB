@@ -19,6 +19,10 @@ DECISION RULE:
 - IF title in hasil_sql is none or empty route to Agregasi_agent
 - If user want overview with spesific genre used two SQL_agent first to see the title and then use that title to route to RAG_agent
 
+- CRITICAL RULE: 
+IF the information in {SQL_result}, {RAG_result}, or {OMDB_result} ALREADY CONTAINS the answer to the user's {question}, YOU MUST route to Agregasi_agent. 
+DO NOT call SQL_agent, RAG_agent, or OMDB_agent again if the data is already found.
+
 EXAMPLE:
 'I Watch movie about World War II and i want to know any simmilar movie' -> RAG_agent
 'what a Horror Movie with Revenue around 10 million dollars' -> SQL_agent

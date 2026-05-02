@@ -51,6 +51,7 @@ if __name__ == "__main__":
      # Siapkan input awal
     inputs = {"messages": [("user", "Siapa sutradara film Inception?")],
             "omdb_called": False}
+    "history": []
 
     # Jalankan grafik dan lihat alirannya (streaming)
     for output in app.stream(inputs, stream_mode="updates"):

@@ -6,6 +6,7 @@ from chatbot.tools.tool import tool_rag, tool_omdb
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
+from langchain.agents import create_agent
 from langchain_classic import hub
 from langfuse import get_client, propagate_attributes
 from langfuse.langchain import CallbackHandler
@@ -71,9 +72,9 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         """
         This agnet is used to sort what agent used for the data search
         """
-        sql_results = state.get("SQL_results", [])
-        omdb_results = state.get("OMDB_result", [])
-        rag_results = state.get("RAG_results", "")
+        sql_results = state.get("SQL_result", "")
+        omdb_results = state.get("OMDB_result", "")
+        rag_results = state.get("RAG_result", "")
         question = state["messages"][-1].content
         
         prompt = Data_prompt.format(
@@ -113,7 +114,7 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         
 def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
     llm = model_llm()
-    RAG_llm = llm.bind_tools([tool_rag])
+    RAG_llm = llm.bind_tools(tool_rag)
     session_id = config.get("configurable", {}).get("session_id", "default")
     with langfuse.start_as_current_observation(
         name="RAG_agnet",
@@ -150,10 +151,7 @@ def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         }
         
 def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
-    llm = model_llm()
-    toolkit = SQLDatabaseToolkit(llm, db)
-    tool_sql = toolkit.get_tools()
-    llm_bind_tool = llm.bind_tools([tool_sql])
+    llm = model_llm(temperature=0.1)
     session_id = config.get("configirable",{}).get("session_id", "default")
     with langfuse.start_as_current_observation(
         name="SQL_agent",
@@ -164,28 +162,53 @@ def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         This node is to connect adn get data from sql database
         """
         
+        toolkit = SQLDatabaseToolkit(db=db, llm=llm)
         question = state["messages"][-1].content
-        history = state["messages"]
-        prompt_sql = hub.pull("langchain-ai/sql-agent-system-prompt")
-        prompt = prompt_sql.format(dialect=db.dialect, top_k=5)
-        
-        result = llm_bind_tool.invoke(
-            [
-                SystemMessage(prompt),
-                HumanMessage(f"Query: {question}"),
-            ],
-            config={
-                "callback": [handler]
-            },
+        prompt_template = hub.pull("langchain-ai/sql-agent-system-prompt")
+        agent_sql = create_agent(
+            model=llm,
+            tools=toolkit.get_tools(),
+            system_prompt=prompt_template.format(dialect=db.dialect, top_k=5)
         )
+        
+        # ... (kode di atasnya tetap sama) ...
+        events = agent_sql.stream(
+            {"messages": [("user", question)]},
+            stream_mode="values"
+        )
+        
+        final_answer = ""
+        for event in events:
+            # Print ke terminal (seperti yang sudah kamu buat)
+            event["messages"][-1].pretty_print()
+            
+            # Tangkap teks jawabannya setiap kali berputar
+            final_answer = event["messages"][-1].content
+            
+        print(f"[SQL Agent] Selesai. Jawaban dikirim ke state: {final_answer}")
+        
+        # INI KUNCI YANG HILANG: Kembalikan datanya ke State!
+        # Pastikan nama key-nya ("SQL_result" atau "SQL_results") sama persis dengan yang ada di AgentState-mu
         return {
-            **state,
-            "SQL_results": result
+            "SQL_result": final_answer 
         }
+            
+            
+            
+        #     {"messages": [("user", question)]},
+        #     config={"callbacks": [handler]}
+        # )
+        
+        # result = response.get("output", "")
+        
+        # return {
+        #     "SQL_result": result
+        # }
+        
         
 def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
     llm = model_llm()
-    omdb_llm = llm.bind_tools([tool_omdb])
+    omdb_llm = llm.bind_tools(tool_omdb)
     session_id = config.get("configirable",{}).get("session_id", "default")
     with langfuse.start_as_current_observation(
         name="OMDB_agent",
