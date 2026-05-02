@@ -1,5 +1,5 @@
 from langchain_core.tools import tool
-from chatbot.config import embedding, retrive, rerank_model, url_omdb, OMDB_API
+from chatbot.config import embedding, retrive, rerank_model, url_omdb, api_omdb
 import requests
 import os
 
@@ -30,7 +30,7 @@ def OMDB_tool(film_title: str) -> str:
     url = url_omdb
 
     params = {
-        "apikey": OMDB_API,
+        "apikey": api_omdb,
         "t": film_title
     }
 
@@ -45,6 +45,7 @@ if __name__ == "__main__":
     from langchain_openai import ChatOpenAI
     from dotenv import load_dotenv
     from langchain.agents import create_agent
+    
     load_dotenv()
 
     llm = ChatOpenAI(model="gpt-4o-mini")
@@ -64,12 +65,9 @@ if __name__ == "__main__":
     print("=" * 60)
 
     response = agent_app.invoke(
-        {"messages": [{"role": "user", "content": "?"}]}
+        {"messages": [{"role": "user", "content": "i watch a series last night with my brother its called breaking bad, so i want to know what the artis name adn info of the movie?"}]}
     )
     answer = response["messages"][-1].content
     print(answer)
-    # print("✅ Agent berhasil dibuat!")
-    # print(f"   Model  : {llm.model_name}")
-    # print(f"   Tools  : {[t.name for t in tools]}")
     
     
