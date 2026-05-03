@@ -49,8 +49,11 @@ def supervisor_agent(state: AgentState, config: RunnableConfig) -> AgentState:
             main_route = main_route[0]
             
         return {
-            "next_worker": main_route
-        }        
+            "next_worker": main_route,
+            "SQL_result": "",
+            "RAG_result": "",
+            "OMDB_result": ""
+        }       
 
 def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
     llm = model_llm(temperature=0.1)
@@ -90,6 +93,9 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
             
         data_route = result.get("data_worker", "Agregasi_agent")
         
+        # ... (kode LLM invoke di Data_agent) ...
+        data_route = result.get("data_worker", "Agregasi_agent")
+        
         return {
             "data_worker": data_route
         }
@@ -105,7 +111,7 @@ def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         """
         This node used to retrive data from vectore databse based on user query
         """
-        hasil_sql = state.get("SQL_results", "")
+        hasil_sql = state.get("SQL_result", "")
         question = state["messages"][-1].content
         history = state["history"]
         
@@ -147,7 +153,7 @@ def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         SQL_llm = llm.bind_tools(SQL_tools)
 
         prompt_template = hub.pull("langchain-ai/sql-agent-system-prompt")
-        prompt_sql = prompt_template.format(dialect=db.dialect, top_k=5)
+        prompt_sql = prompt_template.format(dialect=db.dialect, top_k=30)
 
         question = state["messages"][-1].content
         history = state["history"]
@@ -211,6 +217,7 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         This node used to get data from OMDB server
         """
         hasil_sql = state.get("SQL_result", "")
+        question = state["messages"][-1].content
         history = state["history"]
         
         prompt = omdb_prompt
@@ -218,7 +225,7 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         response = llm.invoke(
             [
                 SystemMessage(prompt),
-                HumanMessage(f"Query: {hasil_sql} \n\n History: {history}"),
+                HumanMessage(f"Query: {question} \n\n SQL history: {hasil_sql} \n\n Chat History: {history}"),
             ],
             config={
                 "callbacks": [handler],
@@ -228,7 +235,7 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         if "N/A" in response.content:
             result = "Tidak pake OMDB"
         else:
-            result = OMDB_tool.invoke({"query": response.content})
+            result = OMDB_tool.invoke({"film_title": response.content})
             
         return {
             "OMDB_result": result
