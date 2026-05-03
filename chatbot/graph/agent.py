@@ -90,11 +90,50 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
                 "callbacks": [handler],
             },
         )
-            
-        data_route = result.get("data_worker", "Agregasi_agent")
         
         # ... (kode LLM invoke di Data_agent) ...
         data_route = result.get("data_worker", "Agregasi_agent")
+        butuh_rag = result.get("needs_overview", False)
+
+        # ==========================================
+        # 🛡️ SMART SEQUENTIAL GUARDIAN 🛡️
+        # ==========================================
+        
+        # 1. PENCEGAH LOOP SQL
+        # Jika SQL sudah jalan, tapi LLM iseng mau balik ke SQL lagi
+        if sql_results != "" and data_route == "SQL_agent":
+            if "EMPTY_RESULT" in sql_results: 
+                print("🚨 [Guardrail] Data kosong di SQL. Memaksa pindah ke Agregasi_agent.")
+                data_route = "Agregasi_agent"
+            else:
+                # Karena SQL sudah sukses, paksa lanjut ke antrean berikutnya (RAG atau OMDB)
+                if butuh_rag == True and rag_results == "":
+                    print("🚨 [Guardrail] SQL selesai. Memaksa lanjut ke RAG_agent untuk overview.")
+                    data_route = "RAG_agent"
+                elif omdb_results == "":
+                    print("🚨 [Guardrail] SQL selesai. Lanjut cari detail tambahan ke OMDB_agent.")
+                    data_route = "OMDB_agent"
+                else:
+                    data_route = "Agregasi_agent"
+
+        # 2. PENCEGAH RAG TERLEWAT (Kasus "Rating Tinggi + Overview")
+        # Jika LLM mau mengakhiri (Agregasi) atau ke OMDB, padahal butuh_rag itu True dan RAG belum jalan!
+        # Kita biarkan lolos JIKA data_route-nya adalah "SQL_agent" (karena memang harus ke SQL dulu).
+        elif butuh_rag == True and rag_results == "" and data_route in ["Agregasi_agent", "OMDB_agent"]:
+            print("🚨 [Guardrail] Tunggu! User butuh overview, RAG belum jalan. Memaksa pindah ke RAG_agent.")
+            data_route = "RAG_agent"
+
+        # 3. Guardrail OMDB (Mencegah loop atau mundur)
+        elif omdb_results != "" and data_route in ["OMDB_agent", "SQL_agent"]:
+            print("🚨 [Guardrail] OMDB sudah dicoba. Memaksa pindah ke Agregasi_agent.")
+            data_route = "Agregasi_agent"
+            
+        # 4. Guardrail RAG (Mencegah RAG berulang kali)
+        elif rag_results != "" and data_route in ["RAG_agent", "SQL_agent", "OMDB_agent"]:
+            print("🚨 [Guardrail] RAG sudah dicoba. Memaksa pindah ke Agregasi_agent.")
+            data_route = "Agregasi_agent"
+            
+        # ==========================================
         
         return {
             "data_worker": data_route
@@ -198,7 +237,7 @@ def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
                 )
 
         else:
-            response = AIMessage(content="Tidak dapat menemukan hasil dalam batas iterasi.")
+            response = AIMessage(content="EMPTY_RESULT")
 
         return {
             "SQL_result": response.content,
@@ -235,7 +274,8 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         if "N/A" in response.content:
             result = "Tidak pake OMDB"
         else:
-            result = OMDB_tool.invoke({"film_title": response.content})
+            clean_title = response.content.strip().strip('"').strip("'")
+            result = OMDB_tool.invoke({"film_title": clean_title})
             
         return {
             "OMDB_result": result

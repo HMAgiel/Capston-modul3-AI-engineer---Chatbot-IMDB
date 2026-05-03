@@ -13,7 +13,8 @@ class DataAgentOutput(TypedDict):
 
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], add_messages]
-    
+    reasoning: str
+    needs_overview: bool
     RAG_result: str
     SQL_result: str
     OMDB_result: str

@@ -34,10 +34,22 @@ def OMDB_tool(film_title: str) -> str:
     }
 
     response = requests.get(url, params=params)
-
-    data = response.json()
     
-    return data
+    # Jangan langsung response.json()! Lakukan pengecekan:
+    if response.status_code != 200:
+        return f"Error: OMDb API mengembalikan status {response.status_code}."
+        
+    try:
+        data = response.json()
+        
+        # Cek apakah OMDb merespon dengan 'Response': 'False' (Film tidak ditemukan)
+        if data.get("Response") == "False":
+            return f"OMDb tidak dapat menemukan film tersebut. Error: {data.get('Error')}"
+            
+        return data
+        
+    except ValueError: # Menangkap JSONDecodeError jika bukan JSON
+        return f"Error: OMDb merespon dengan format yang salah (bukan JSON). Response text: {response.text[:100]}"
 tool_omdb = [OMDB_tool]
     
     
