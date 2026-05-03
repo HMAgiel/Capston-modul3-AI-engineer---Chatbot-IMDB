@@ -1,9 +1,9 @@
 from chatbot.graph.state import SupervisorOutput, DataAgentOutput, AgentState
 from chatbot.config import model_llm, db
 from chatbot.prompt.supervisor import SUPERVISOR_PROMPT
-from chatbot.prompt.agent_prompt import RAG_prompt, omdb_prompt, Data_prompt, agregasi_prompt, Basic_prompt
-from chatbot.tools.tool import RAG_tool, tool_omdb
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from chatbot.prompt.agent_prompt import RAG_prompt, omdb_prompt, Data_prompt, SQL_tambahan_prompt,agregasi_prompt, Basic_prompt
+from chatbot.tools.tool import RAG_tool, OMDB_tool
+from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from langchain.agents import create_agent
@@ -78,7 +78,7 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         question = state["messages"][-1].content
         
         # Optional: log untuk debug routing decision
-        print(f"[Data_agent] SQL='{sql_results[:50]}' RAG='{rag_results[:50]}' OMDB='{omdb_results[:50]}'")
+        # print(f"[Data_agent] SQL='{sql_results[:50]}' RAG='{rag_results[:50]}' OMDB='{omdb_results[:50]}'")
         
         prompt = Data_prompt.format(
             question=question,
@@ -153,64 +153,85 @@ def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         
 def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
     llm = model_llm(temperature=0.1)
-    session_id = config.get("configirable",{}).get("session_id", "default")
-    with langfuse.start_as_current_observation(
-        name="SQL_agent",
-        as_type="span"
-    ):
-        handler=CallbackHandler()
-        """
-        This node is to connect adn get data from sql database
-        """
-        
+    session_id = config.get("configurable", {}).get("session_id", "default")
+
+    with langfuse.start_as_current_observation(name="SQL_agent", as_type="span"):
+        handler = CallbackHandler()
+
+        # Setup tools
         toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+        SQL_tools = toolkit.get_tools()
+        tools_map = {tool.name: tool for tool in SQL_tools}
+        SQL_llm = llm.bind_tools(SQL_tools)
+
+        # Setup prompt
+        prompt_template = hub.pull("langchain-ai/sql-agent-system-prompt")
+        prompt_sql = prompt_template.format(dialect=db.dialect, top_k=5)
+
         question = state["messages"][-1].content
         history = state["history"]
-        prompt_template = hub.pull("langchain-ai/sql-agent-system-prompt")
-        agent_sql = create_agent(
-            model=llm,
-            tools=toolkit.get_tools(),
-            system_prompt=prompt_template.format(dialect=db.dialect, top_k=5)
-        )
-        
-        # ... (kode di atasnya tetap sama) ...
-        events = agent_sql.stream(
-            {"messages": [("user", question), ("History", history)]},
-            stream_mode="values"
-        )
-        
-        final_answer = ""
-        for event in events:
-            # Print ke terminal (seperti yang sudah kamu buat)
-            event["messages"][-1].pretty_print()
-            
-            # Tangkap teks jawabannya setiap kali berputar
-            final_answer = event["messages"][-1].content
-            
-        print(f"[SQL Agent] Selesai. Jawaban dikirim ke state: {final_answer}")
-        
-        # INI KUNCI YANG HILANG: Kembalikan datanya ke State!
-        # Pastikan nama key-nya ("SQL_result" atau "SQL_results") sama persis dengan yang ada di AgentState-mu
+
+        # Initial messages
+        messages = [
+            SystemMessage(content=prompt_sql),
+            HumanMessage(content=f"Query: {question}\n\nHistory: {history}"),
+        ]
+
+        MAX_ITERATIONS = 10  # ✅ Safety limit supaya tidak infinite loop
+        iteration = 0
+
+        while iteration < MAX_ITERATIONS:
+            iteration += 1
+
+            # Step 1: LLM decide action
+            response: AIMessage = SQL_llm.invoke(
+                messages,
+                config={"callbacks": [handler]},
+            )
+            messages.append(response)
+
+            # Step 2: Cek apakah LLM sudah selesai (tidak ada tool call)
+            if not response.tool_calls:
+                print(f"✅ Selesai dalam {iteration} iterasi")
+                break
+
+            # Step 3: Eksekusi semua tool calls
+            for tool_call in response.tool_calls:
+                tool_name = tool_call["name"]
+                tool_args = tool_call["args"]
+                tool_id   = tool_call["id"]
+
+                print(f"🔧 Executing tool: {tool_name} | args: {tool_args}")
+
+                try:
+                    tool = tools_map[tool_name]
+                    tool_output = tool.invoke(tool_args)
+                except Exception as e:
+                    tool_output = f"Error executing tool: {str(e)}"
+
+                # Step 4: Append hasil tool ke messages
+                messages.append(
+                    ToolMessage(
+                        content=str(tool_output),
+                        tool_call_id=tool_id,
+                        name=tool_name,
+                    )
+                )
+
+        else:
+            # Kalau sampai MAX_ITERATIONS belum selesai
+            print(f"⚠️ Reached max iterations ({MAX_ITERATIONS})")
+            response = AIMessage(content="Tidak dapat menemukan hasil dalam batas iterasi.")
+
         return {
-            "SQL_result": final_answer 
+            "SQL_result": response.content,
+            "messages": state["messages"],  # preserve original messages
         }
-            
-            
-            
-        #     {"messages": [("user", question)]},
-        #     config={"callbacks": [handler]}
-        # )
-        
-        # result = response.get("output", "")
-        
-        # return {
-        #     "SQL_result": result
-        # }
+
         
         
 def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
     llm = model_llm()
-    omdb_llm = llm.bind_tools(tool_omdb)
     session_id = config.get("configirable",{}).get("session_id", "default")
     with langfuse.start_as_current_observation(
         name="OMDB_agent",
@@ -220,13 +241,13 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         """
         This node used to get data from OMDB server
         """
-        hasil_sql = state.get("SQL_result", "")
+        hasil_sql = state.get("SQL_results", "")
+        question = state["messages"][-1].content
         history = state["history"]
-        prompt = omdb_prompt.format(
-            hasil_sql=hasil_sql
-        )
         
-        result = omdb_llm.invoke(
+        prompt = RAG_prompt
+        
+        response = llm.invoke(
             [
                 SystemMessage(prompt),
                 HumanMessage(f"Query: {hasil_sql} \n\n History: {history}"),
@@ -235,6 +256,13 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
                 "callbacks": [handler],
             },
         )
+        
+        # Gunakan response.content untuk mengambil teks dari AIMessage
+        if "N/A" in response.content:
+            result = "Tidak pake OMDB"
+        else:
+            # Panggil tool dengan key 'query' dan value berupa text
+            result = RAG_tool.invoke({"query": response.content})
             
         return {
             "OMDB_result": result
