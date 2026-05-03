@@ -1,5 +1,5 @@
 import uuid
-from chatbot.graph.graph import build_graph
+from chatbot.graph.graph import app
 from langfuse import get_client, propagate_attributes
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langfuse.langchain import CallbackHandler
@@ -8,14 +8,11 @@ from dotenv import load_dotenv
 load_dotenv()
 langfuse = get_client()
 
-# 1. PINDAHKAN UUID KE SINI!
-# Dibuat satu kali saja saat program pertama kali dijalankan (bukan setiap kali ngetik)
+
 CURRENT_SESSION_ID = str(uuid.uuid4())
 
 def run_chatbot(query: str):
-    # Baris "app" yang sendirian sudah dihapus karena tidak perlu
-    app = build_graph()
-
+    
     print(f"\n{'='*55}")
     print(f"Query: {query}")
     print(f"Session: {CURRENT_SESSION_ID}")
@@ -26,9 +23,8 @@ def run_chatbot(query: str):
         as_type="trace",
         input={"query": query}
     ) as obs:
-        # 2. Kembalikan propagate_attributes agar Langfuse melacak sempurna
         with propagate_attributes(session_id=CURRENT_SESSION_ID):
-            # Masukkan session_id ke handler Langfuse
+
             handler = CallbackHandler()
             
             result = app.invoke(
@@ -44,7 +40,10 @@ def run_chatbot(query: str):
                 },
                 config={
                     "callbacks": [handler],
-                    "configurable": {"session_id": CURRENT_SESSION_ID}, # Pakai ID yang konstan
+                    "configurable": {
+                        "session_id": CURRENT_SESSION_ID,
+                        "thread_id": CURRENT_SESSION_ID
+                        },
                 },
             )
             

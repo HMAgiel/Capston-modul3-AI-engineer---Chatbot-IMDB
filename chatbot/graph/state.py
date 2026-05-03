@@ -1,3 +1,4 @@
+import operator
 from typing import TypedDict, List, Literal, Annotated
 from typing_extensions import TypedDict
 from langchain_core.messages import BaseMessage
@@ -16,7 +17,7 @@ class AgentState(TypedDict):
     RAG_result: str
     SQL_result: str
     OMDB_result: str
-    history: list
+    history: Annotated[List, operator.add]
     data_worker: Literal["RAG_agent", "SQL_agent", "OMDB_agent"]
     next_worker: Literal["Data_agent", "basic_agent"]
     final_result: str

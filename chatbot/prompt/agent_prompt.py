@@ -76,10 +76,18 @@ IF the input is from SQL result {SQL_result} get the title and use the title to 
 question: {question}
 """
 
+SQL_tambahan_prompt="""
+  CRITICAL INSTRUCTION:
+  - Always read the conversation history carefully before querying
+  - If the user refers to specific items (films, products, etc.) from previous messages,
+    query ONLY those specific items by name/id
+  - Never substitute with generic "top N" queries unless explicitly asked
+  """
+
 omdb_prompt = """
 You are an agent for get the data from OMDb APi database, retrive the data from OMDb website using OMDB tools.
-extract the title of the movie from {hasil_sql}.
-put the title to the tools adn search the movie data
+extract the title of the movie from the query you given.
+put the title to the tools and search the movie data
 """
 
 agregasi_prompt="""

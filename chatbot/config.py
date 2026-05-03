@@ -38,15 +38,13 @@ def model_llm(temperature=0.7):
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=temperature)
     return llm
 
-def rerank_model():
-    device_used=check_gpu()
-    rerank = CrossEncoder(
-        "Qwen/Qwen3-Reranker-0.6B", 
-        device=device_used, 
-        cache_folder="chatbot/model",
-        local_files_only=True
-    )
-    return rerank
+device_used=check_gpu()
+rerank = CrossEncoder(
+    "Qwen/Qwen3-Reranker-0.6B", 
+    device=device_used, 
+    cache_folder="chatbot/model",
+    local_files_only=True
+)
 
 client = QdrantClient(
     url=url,
