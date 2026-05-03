@@ -2,7 +2,7 @@ from chatbot.graph.state import SupervisorOutput, DataAgentOutput, AgentState
 from chatbot.config import model_llm, db
 from chatbot.prompt.supervisor import SUPERVISOR_PROMPT
 from chatbot.prompt.agent_prompt import RAG_prompt, omdb_prompt, Data_prompt, agregasi_prompt, Basic_prompt
-from chatbot.tools.tool import tool_rag, tool_omdb
+from chatbot.tools.tool import RAG_tool, tool_omdb
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
@@ -77,6 +77,9 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         rag_results = state.get("RAG_result", "")
         question = state["messages"][-1].content
         
+        # Optional: log untuk debug routing decision
+        print(f"[Data_agent] SQL='{sql_results[:50]}' RAG='{rag_results[:50]}' OMDB='{omdb_results[:50]}'")
+        
         prompt = Data_prompt.format(
             question=question,
             RAG_result=rag_results,
@@ -94,16 +97,10 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
             },
         )
             
-        if result and "data_worker" in result:
-            data_route = result["data_worker"]
-        else:
-            data_route = "Agregasi_agent"
-            
-        if isinstance(data_route, list):
-            data_route = data_route[0]
+        data_route = result.get("data_worker", "Agregasi_agent")
         
         return {
-            "data_worker": str(data_route)
+            "data_worker": data_route
         }
         
         # return {
@@ -114,7 +111,6 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         
 def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
     llm = model_llm()
-    RAG_llm = llm.bind_tools(tool_rag)
     session_id = config.get("configurable", {}).get("session_id", "default")
     with langfuse.start_as_current_observation(
         name="RAG_agnet",
@@ -124,30 +120,35 @@ def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         """
         This node used to retrive data from vectore databse based on user query
         """
-        hasil_sql = state.get("SQL_results", [])
+        hasil_sql = state.get("SQL_results", "")
         question = state["messages"][-1].content
         history = state["history"]
         
         prompt = RAG_prompt.format(
-            history=history,
             question=question,
             SQL_result=hasil_sql
 
         )
         
-        result = RAG_llm.invoke(
+        response = llm.invoke(
             [
                 SystemMessage(prompt),
-                HumanMessage(f"Query: {question}"),
+                HumanMessage(f"Query: {question} \n\n History: {history}"),
             ],
             config={
                 "callbacks": [handler],
             },
         )
+        
+        # Gunakan response.content untuk mengambil teks dari AIMessage
+        if "N/A" in response.content:
+            result = "Tidak pake RAG"
+        else:
+            # Panggil tool dengan key 'query' dan value berupa text
+            result = RAG_tool.invoke({"query": response.content})
             
         return {
-            **state,
-            "RAG_results": result
+            "RAG_result": result
         }
         
 def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
@@ -164,6 +165,7 @@ def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         
         toolkit = SQLDatabaseToolkit(db=db, llm=llm)
         question = state["messages"][-1].content
+        history = state["history"]
         prompt_template = hub.pull("langchain-ai/sql-agent-system-prompt")
         agent_sql = create_agent(
             model=llm,
@@ -173,7 +175,7 @@ def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         
         # ... (kode di atasnya tetap sama) ...
         events = agent_sql.stream(
-            {"messages": [("user", question)]},
+            {"messages": [("user", question), ("History", history)]},
             stream_mode="values"
         )
         
@@ -218,7 +220,8 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         """
         This node used to get data from OMDB server
         """
-        hasil_sql = state.get("SQL_results", [])
+        hasil_sql = state.get("SQL_result", "")
+        history = state["history"]
         prompt = omdb_prompt.format(
             hasil_sql=hasil_sql
         )
@@ -226,7 +229,7 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         result = omdb_llm.invoke(
             [
                 SystemMessage(prompt),
-                HumanMessage(f"Query: {hasil_sql}"),
+                HumanMessage(f"Query: {hasil_sql} \n\n History: {history}"),
             ],
             config={
                 "callbacks": [handler],
@@ -234,7 +237,6 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         )
             
         return {
-            **state,
             "OMDB_result": result
         }
         
@@ -301,7 +303,7 @@ def basic_agent(state: AgentState, config: RunnableConfig)-> AgentState:
         result = llm.invoke(
             [
                 SystemMessage(prompt),
-                HumanMessage(f"Query: {question}"),
+                HumanMessage(f"Query: {question} \n\n History: {history}"),
             ],
             config={
                 "callbacks": [handler],

@@ -18,6 +18,6 @@ class AgentState(TypedDict):
     OMDB_result: str
     history: list
     data_worker: Literal["RAG_agent", "SQL_agent", "OMDB_agent"]
-    next_worker: Literal["data_agent", "basic_agent"]
+    next_worker: Literal["Data_agent", "basic_agent"]
     final_result: str
     

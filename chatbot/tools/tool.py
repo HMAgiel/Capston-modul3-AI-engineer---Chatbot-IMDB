@@ -1,15 +1,14 @@
 from langchain_core.tools import tool
-from chatbot.config import embedding, retrive, rerank_model, url_omdb, api_omdb
+from chatbot.config import retrive, rerank_model, url_omdb, api_omdb
 import requests
 import os
 
 @tool
 def RAG_tool(query: str) -> str:
     """This tools is used to call data from Qdrant based on user query"""
-    embedding = embedding()
-    retrive = retrive(embedding)
+    retrive_rag = retrive
     rerank = rerank_model()
-    results = retrive.similarity_search(query=query, k=5)
+    results = retrive_rag.similarity_search(query=query, k=5)
     hasil_rag = [result.page_content for result in results]
     reranking = rerank.rank(
     query, 
