@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎬 CineAgent — Multi-Agent Movie Intelligence Chatbot
+# 🎬 MovGent — Multi-Agent Movie Intelligence Chatbot
 
 **A graph-orchestrated, multi-agent system that answers movie questions using SQL, vector search, and external APIs — powered by LangGraph, OpenAI, Qdrant, and Streamlit.**
 
@@ -25,7 +25,7 @@
 
 ## 📖 Overview
 
-**CineAgent** is a multi-agent conversational AI system built to answer complex movie-related questions. It goes beyond simple Q&A by orchestrating multiple specialized agents through a **supervisor pattern** using **LangGraph's state graph**, combining structured data (SQL), unstructured knowledge (RAG via Qdrant), and real-time external data (OMDb API) into cohesive, informative responses.
+**MovGent** is a multi-agent conversational AI system built to answer complex movie-related questions. It goes beyond simple Q&A by orchestrating multiple specialized agents through a **supervisor pattern** using **LangGraph's state graph**, combining structured data (SQL), unstructured knowledge (RAG via Qdrant), and real-time external data (OMDb API) into cohesive, informative responses.
 
 The system is built on the **IMDB Top 1000 Movies** dataset and demonstrates real-world AI engineering patterns:
 
@@ -55,7 +55,7 @@ The system is built on the **IMDB Top 1000 Movies** dataset and demonstrates rea
 
 ## 🏗️ Architecture
 
-CineAgent uses a **supervisor-orchestrated, graph-based multi-agent architecture** built with LangGraph.
+MovGent uses a **supervisor-orchestrated, graph-based multi-agent architecture** built with LangGraph.
 
 ### Agent Flow
 
@@ -192,8 +192,8 @@ Capston3/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/HMAgiel/CineAgent.git
-cd CineAgent
+git clone https://github.com/HMAgiel/Capston-modul3-AI-engineer---Chatbot-IMDB.git
+cd Capston-modul3-AI-engineer---Chatbot-IMDB
 
 # 2. Install dependencies with uv
 uv sync
