@@ -27,13 +27,11 @@ def supervisor_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         handler = CallbackHandler()
         
         last_message = state["messages"][-1].content
-        history  = state["history"]
-        
         
         decision = llm_supervisor.invoke(
             [
                 SystemMessage(SUPERVISOR_PROMPT),
-                HumanMessage(f"last_message: {last_message}\n\n History: {history}"),
+                HumanMessage(f"last_message: {last_message}"),
             ],
             config = {
                 "callbacks": [handler]
@@ -337,7 +335,7 @@ def basic_agent(state: AgentState, config: RunnableConfig)-> AgentState:
         produk atau promo.
         """
         question = state["messages"][0]
-        history  = state["history"]
+        history  = state["history"][-3:] if len(state["history"]) > 3 else state["history"]
 
         prompt = Basic_prompt.format(
             history=history,

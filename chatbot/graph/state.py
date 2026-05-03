@@ -9,12 +9,12 @@ class SupervisorOutput(TypedDict):
     next_worker: Literal["Data_agent", "basic_agent"]
     
 class DataAgentOutput(TypedDict):
+    reasoning: str
+    needs_overview: bool
     data_worker: Literal["RAG_agent", "SQL_agent", "OMDB_agent", "Agregasi_agent"]
 
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], add_messages]
-    reasoning: str
-    needs_overview: bool
     RAG_result: str
     SQL_result: str
     OMDB_result: str
