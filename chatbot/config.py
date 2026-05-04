@@ -20,7 +20,7 @@ qdrant_api = os.getenv("QDRANT_API")
 url_omdb = os.getenv("OMDB_url")
 api_omdb = os.getenv("OMDB_api_key")
 
-data_base = create_engine("sqlite://///home/hasyim/projects-ai-engineer/Capston3/chatbot/data/process/IMDB_FILM_capston3.db")
+data_base = create_engine("sqlite://///chatbot/data/process/IMDB_FILM_capston3.db")
 db = SQLDatabase(data_base)
 
 def check_gpu():
