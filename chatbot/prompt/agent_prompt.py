@@ -1,8 +1,6 @@
 Data_prompt = """
 You are an intelligent routing agent. Your job is to evaluate the user query against the current results and decide the NEXT logical step.
 
-User question: {question}
-
 Current data gathered:
 - RAG_result: {RAG_result}
 - SQL_result: {SQL_result}
@@ -16,9 +14,11 @@ Before deciding the `data_worker`, you MUST write your `reasoning` by evaluating
 
 === ROUTING RULES (data_worker) ===
 PHASE 1: FIRST ROUTING (All results are empty)
-- Specific DB info (actor/cast, genre, rating, revenue, director) → SQL_agent
-- Thematic/story overview, descriptions, plot → RAG_agent
-- IF QUERY HAS BOTH → ALWAYS start with SQL_agent to get the movie list first.
+- Specific DB info (actor/cast, genre, runtime, Certificate, rating, revenue, director, released year/year, Votes, Gross) → SQL_agent
+- Thematic/story overview, descriptions, plot and what the film about → RAG_agent
+- IF QUERY HAS BOTH USED:
+   - IF USER INPUT HAS SPESIFIC INFO -> START WITH SQL_agent
+   - IF USER TELL STROY WITHOUT SAY TITLE OR ANY GIVEN SPECIFIC INFO -> START WITH RAG_agent
 
 PHASE 2: AFTER AN AGENT HAS RUN
 CRITICAL ANTI-LOOP RULE: 
@@ -34,6 +34,9 @@ MULTI-HOP LOGIC (Strict Hierarchy):
 
 3. If ALL parts of the user's explicit question are satisfied, OR if data is confirmed missing:
    → Agregasi_agent.
+
+CRITICAL RULE
+- ALWAYS GOES Agregasi_agent to make output for user, NEVER ANSWEAR FROM SQL_agent, RAG_agent and OMDB_agent directly to user 
 """
 
 RAG_prompt = """
