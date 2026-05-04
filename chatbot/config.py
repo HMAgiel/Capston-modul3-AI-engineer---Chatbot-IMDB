@@ -1,3 +1,11 @@
+import os
+
+# 1. Dapatkan lokasi absolut dari folder tempat config.py ini berada (folder 'chatbot')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 2. Gabungkan lokasinya dengan folder data/process/nama_database_kamu.db
+db_path = os.path.join(BASE_DIR, "data", "process", "IMDB_FILM_capston3.db") # Sesuaikan nama file .db kamu
+
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from sqlalchemy import create_engine
@@ -20,7 +28,7 @@ qdrant_api = os.getenv("QDRANT_API")
 url_omdb = os.getenv("OMDB_url")
 api_omdb = os.getenv("OMDB_api_key")
 
-data_base = create_engine("sqlite://///chatbot/data/process/IMDB_FILM_capston3.db")
+data_base = create_engine(f"sqlite:///{db_path}")
 db = SQLDatabase(data_base)
 
 def check_gpu():
