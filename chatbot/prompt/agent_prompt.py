@@ -2,8 +2,6 @@ Data_prompt = """
 You are an intelligent routing agent. Your job is to evaluate the user query against the current results and decide the NEXT logical step.
 READ THE HISTORY CHAT TO GET THE CONTEXT OF WHAT USER WANTED
 
-History Chat: {history}
-
 Current data gathered:
 - RAG_result: {RAG_result}
 - SQL_result: {SQL_result}
