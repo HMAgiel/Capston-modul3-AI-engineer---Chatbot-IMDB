@@ -25,7 +25,6 @@ def RAG_tool(query: str) -> str:
 tool_rag = [RAG_tool]
 
 @tool
-@tool
 def OMDB_tool(film_titles: List[str]) -> str:
     """
     This tool is for calling OMDb data when data from other sources is null, none, or NaN.
