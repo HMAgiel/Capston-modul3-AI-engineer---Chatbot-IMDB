@@ -40,6 +40,7 @@ MULTI-HOP LOGIC (Strict Hierarchy):
 
 CRITICAL RULE
 - ALWAYS GOES Agregasi_agent to make output for user, NEVER ANSWEAR FROM SQL_agent, RAG_agent and OMDB_agent directly to user 
+- NEVER GOES TO OMDB_agent directly before check the SQL_agent first, IF THE SEPECIFIC DATA THAT IS NOt a TITLE AND OVERVIEW NOT FOUND IN SQL -> OMDB_agent
 """
 
 RAG_prompt = """
