@@ -8,7 +8,7 @@ from langchain_qdrant import QdrantVectorStore
 from chatbot.config import embedding_model, url, qdrant_api
 import os
 
-data_path = "/home/hasyim/Bootcamp_AI/capston/Capston3/chatbot/data/raw/imdb_top_1000.csv"
+data_path = "chatbot/data/raw/imdb_top_1000.csv"
 df = pd.read_csv(data_path)
 
 df=df.replace({'Released_Year': 'PG'}, None)
@@ -21,7 +21,7 @@ df['film_id'] = [str(uuid4()) for _ in range(len(df['Series_Title']))]
 
 df_clean = df.drop(columns="Overview")
 
-engine = create_engine('sqlite:////home/hasyim/Bootcamp_AI/capston/Capston3/chatbot/data/process/IMDB_FILM_capston3.db')
+engine = create_engine('sqlite:////chatbot/data/process/IMDB_FILM_capston3.db')
 
 with engine.begin() as conn:
     conn.execute(text("DROP TABLE IF EXISTS FILM_TABEL"))
