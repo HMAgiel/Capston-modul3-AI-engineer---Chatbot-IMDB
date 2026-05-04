@@ -138,7 +138,6 @@ def RAG_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         history = state["history"]
         
         prompt = RAG_prompt.format(
-            question=question,
             SQL_result=hasil_sql
 
         )
@@ -243,10 +242,10 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         hasil_sql = state.get("SQL_result", "")
         question = state["messages"][-1].content
         history = state["history"]
-        llm_tools = llm.bind_tools(OMDB_tool)
+        
         prompt = omdb_prompt
         
-        response = llm_tools.invoke(
+        response = llm.invoke(
             [
                 SystemMessage(prompt),
                 HumanMessage(f"Query: {question} \n\n SQL history: {hasil_sql} \n\n Chat History: {history}"),
@@ -256,8 +255,14 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
             },
         )
         
+        if "N/A" in response.content:
+            result = "Tidak pake OMDB"
+        else:
+            clean_title = response.content.strip().strip('"').strip("'")
+            result = OMDB_tool.invoke({"film_title": clean_title})
+            
         return {
-            "OMDB_result": response
+            "OMDB_result": result
         }
         
         

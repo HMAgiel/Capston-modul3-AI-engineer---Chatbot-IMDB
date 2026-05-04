@@ -1,10 +1,8 @@
 from langchain_core.tools import tool
 from chatbot.config import retrive, rerank, url_omdb, api_omdb
 import requests
-from typing import List
 import requests
-import json
-import os
+
 
 @tool
 def RAG_tool(query: str) -> str:
@@ -23,6 +21,7 @@ def RAG_tool(query: str) -> str:
     return context_list
     
 tool_rag = [RAG_tool]
+
 
 @tool
 def OMDB_tool(film_title: str) -> str:
@@ -54,5 +53,3 @@ def OMDB_tool(film_title: str) -> str:
     except ValueError: # Menangkap JSONDecodeError jika bukan JSON
         return f"Error: OMDb merespon dengan format yang salah (bukan JSON). Response text: {response.text[:100]}"
 tool_omdb = [OMDB_tool]
-    
-    

@@ -39,7 +39,7 @@ MULTI-HOP LOGIC (Strict Hierarchy):
    → Agregasi_agent.
 
 CRITICAL RULE
-- ALWAYS GOES Agregasi_agent to make output for user, NEVER ANSWEAR FROM SQL_agent, RAG_agent and OMDB_agent directly to user 
+- ALWAYS GOES to Agregasi_agent when make output for user, NEVER ANSWEAR FROM SQL_agent, RAG_agent and OMDB_agent directly to user 
 - NEVER GOES TO OMDB_agent directly before check the SQL_agent first, IF THE SEPECIFIC DATA THAT IS NOt a TITLE AND OVERVIEW NOT FOUND IN SQL -> OMDB_agent
 """
 
@@ -49,8 +49,6 @@ Your job is to take user query and see what user intention and rewrite to be mor
 If user query is in langunage other than english tranlate it first and rewrite it before call the tool for RAG
 
 IF the input is from SQL result {SQL_result} get the title and use the title to search simmilarity from that title to the database
-
-question: {question}
 """
 
 SQL_tambahan_prompt="""
