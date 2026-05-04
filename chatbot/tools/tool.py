@@ -8,7 +8,7 @@ def RAG_tool(query: str) -> str:
     """This tools is used to call data from Qdrant based on user query"""
     retrive_rag = retrive
     rerank_model = rerank
-    results = retrive_rag.similarity_search(query=query, k=5)
+    results = retrive_rag.similarity_search(query=query)
     hasil_rag = [result.page_content for result in results]
     reranking = rerank_model.rank(
     query, 

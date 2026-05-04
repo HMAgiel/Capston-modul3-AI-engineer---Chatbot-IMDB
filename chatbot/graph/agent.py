@@ -89,22 +89,14 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
             },
         )
         
-        # ... (kode LLM invoke di Data_agent) ...
         data_route = result.get("data_worker", "Agregasi_agent")
         butuh_rag = result.get("needs_overview", False)
-
-        # ==========================================
-        # 🛡️ SMART SEQUENTIAL GUARDIAN 🛡️
-        # ==========================================
-        
-        # 1. PENCEGAH LOOP SQL
-        # Jika SQL sudah jalan, tapi LLM iseng mau balik ke SQL lagi
+   
         if sql_results != "" and data_route == "SQL_agent":
             if "EMPTY_RESULT" in sql_results: 
                 print("🚨 [Guardrail] Data kosong di SQL. Memaksa pindah ke Agregasi_agent.")
                 data_route = "Agregasi_agent"
             else:
-                # Karena SQL sudah sukses, paksa lanjut ke antrean berikutnya (RAG atau OMDB)
                 if butuh_rag == True and rag_results == "":
                     print("🚨 [Guardrail] SQL selesai. Memaksa lanjut ke RAG_agent untuk overview.")
                     data_route = "RAG_agent"
@@ -114,25 +106,18 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
                 else:
                     data_route = "Agregasi_agent"
 
-        # 2. PENCEGAH RAG TERLEWAT (Kasus "Rating Tinggi + Overview")
-        # Jika LLM mau mengakhiri (Agregasi) atau ke OMDB, padahal butuh_rag itu True dan RAG belum jalan!
-        # Kita biarkan lolos JIKA data_route-nya adalah "SQL_agent" (karena memang harus ke SQL dulu).
         elif butuh_rag == True and rag_results == "" and data_route in ["Agregasi_agent", "OMDB_agent"]:
             print("🚨 [Guardrail] Tunggu! User butuh overview, RAG belum jalan. Memaksa pindah ke RAG_agent.")
             data_route = "RAG_agent"
 
-        # 3. Guardrail OMDB (Mencegah loop atau mundur)
         elif omdb_results != "" and data_route in ["OMDB_agent", "SQL_agent"]:
             print("🚨 [Guardrail] OMDB sudah dicoba. Memaksa pindah ke Agregasi_agent.")
             data_route = "Agregasi_agent"
             
-        # 4. Guardrail RAG (Mencegah RAG berulang kali)
         elif rag_results != "" and data_route in ["RAG_agent", "SQL_agent", "OMDB_agent"]:
             print("🚨 [Guardrail] RAG sudah dicoba. Memaksa pindah ke Agregasi_agent.")
             data_route = "Agregasi_agent"
-            
-        # ==========================================
-        
+                
         return {
             "data_worker": data_route
         }
@@ -190,7 +175,9 @@ def SQL_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         SQL_llm = llm.bind_tools(SQL_tools)
 
         prompt_template = hub.pull("langchain-ai/sql-agent-system-prompt")
-        prompt_sql = prompt_template.format(dialect=db.dialect, top_k=30)
+        prompt_sql = prompt_template.format(
+            dialect=db.dialect,
+            top_k="this number is based on what user want in default use '10' but if user want 5 yse 5 if want more or less do it as user specifiy")
 
         question = state["messages"][-1].content
         history = state["history"]
@@ -334,17 +321,13 @@ def basic_agent(state: AgentState, config: RunnableConfig)-> AgentState:
         Node ini menjawab pertanyaan umum yang tidak masuk kategori
         produk atau promo.
         """
-        question = state["messages"][0]
-        history  = state["history"][-3:] if len(state["history"]) > 3 else state["history"]
+        question = state["messages"][-1].content
 
-        prompt = Basic_prompt.format(
-            history=history,
-            question=question,
-        )
+        prompt = Basic_prompt
         result = llm.invoke(
             [
                 SystemMessage(prompt),
-                HumanMessage(f"Query: {question} \n\n History: {history}"),
+                HumanMessage(f"Query: {question}"),
             ],
             config={
                 "callbacks": [handler],
