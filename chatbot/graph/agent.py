@@ -259,7 +259,7 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         if "N/A" in response.content:
             result = "Tidak pake OMDB"
         else:
-            clean_title = response.content.strip().strip('"').strip("'")
+            clean_title = [judul.strip() for judul in response.content.split(',')]
             result = OMDB_tool.invoke({"film_title": clean_title})
             
         return {

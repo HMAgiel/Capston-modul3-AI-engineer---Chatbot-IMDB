@@ -5,10 +5,7 @@ from langfuse import get_client, propagate_attributes
 from langchain_core.messages import HumanMessage, AIMessage
 from langfuse.langchain import CallbackHandler
 from dotenv import load_dotenv
-
-# ── Ganti ini dengan import graph kamu ──────────────────────────
 from chatbot.graph.graph import app as langgraph_app
-# ────────────────────────────────────────────────────────────────
 
 load_dotenv()
 langfuse = get_client()
@@ -38,8 +35,8 @@ def run_chatbot(chat_history: list) -> dict:
 
             result = langgraph_app.invoke(
                 {
-                    "messages": [HumanMessage(content=latest_query)], # ⬅️ Cukup masukkan query terbaru
-                    "history": past_history,                          # ⬅️ History dimasukkan ke sini!
+                    "messages": [HumanMessage(content=latest_query)], 
+                    "history": past_history,                         
                     "SQL_result": "",
                     "RAG_result": "",
                     "OMDB_result": "",
