@@ -243,10 +243,10 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         hasil_sql = state.get("SQL_result", "")
         question = state["messages"][-1].content
         history = state["history"]
-        
+        llm_tools = llm.bind_tools(OMDB_tool)
         prompt = omdb_prompt
         
-        response = llm.invoke(
+        response = llm_tools.invoke(
             [
                 SystemMessage(prompt),
                 HumanMessage(f"Query: {question} \n\n SQL history: {hasil_sql} \n\n Chat History: {history}"),
@@ -256,15 +256,10 @@ def OMDB_agent(state: AgentState, config: RunnableConfig) -> AgentState:
             },
         )
         
-        if "N/A" in response.content:
-            result = "Tidak pake OMDB"
-        else:
-            clean_title = [judul.strip() for judul in response.content.split(',')]
-            result = OMDB_tool.invoke({"film_title": clean_title})
-            
         return {
-            "OMDB_result": result
+            "OMDB_result": response
         }
+        
         
 def Agregasi_agent(state: AgentState, config: RunnableConfig) -> AgentState:
     llm = model_llm()
