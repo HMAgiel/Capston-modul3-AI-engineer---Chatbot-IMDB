@@ -73,7 +73,7 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         history  = state["history"]
         
         prompt = Data_prompt.format(
-            question=question,
+            history=history,
             RAG_result=rag_results,
             SQL_result=sql_results,
             OMDB_result=omdb_results
@@ -82,7 +82,7 @@ def Data_agent(state: AgentState, config: RunnableConfig) -> AgentState:
         result = llm_data.invoke(
             [
                 SystemMessage(prompt),
-                HumanMessage(f"Query: {question} \n\n History: {history}")
+                HumanMessage(f"Query: {question}")
             ],
             config={
                 "callbacks": [handler],
